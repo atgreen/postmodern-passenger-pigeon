@@ -37,15 +37,17 @@
 (defun connect-spec-from-configuration ()
   "Takes a URL of form postgres://username:pass@hostname[:port]/database and connects to it."
 
-  (multiple-value-bind (proto auth hostname port db) (quri:parse-uri (ppp.configuration:database-url))
+  (multiple-value-bind (proto auth hostname port db query) (quri:parse-uri (ppp.configuration:database-url))
     (assert (string-equal proto "postgres"))
     (let ((colon-position (cl:position #\: auth :test #'char=)))
-      (list (subseq db 1)
-            (subseq auth 0 colon-position)
-            (if colon-position (subseq auth (1+ colon-position)) "")
-            hostname
-            :port (or port 5432)))))
-
+      (append
+       (list (subseq db 1)
+             (subseq auth 0 colon-position)
+             (if colon-position (subseq auth (1+ colon-position)) "")
+             hostname
+             :port (or port 5432))
+       (when (and query (string= "sslmode=" (subseq query 0 8)))
+         (list :use-ssl (intern (string-upcase (subseq query 8)) :keyword)))))))
 
 (defun print-usage (&optional message)
   (format t "~&ppp [command]
